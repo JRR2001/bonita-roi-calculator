@@ -68,14 +68,10 @@ export const FreelancerStatsCard = React.forwardRef<
     },
   };
 
-  // Animation variants for each individual bar
+  // Animation variants for each individual bar (transition passed as prop to avoid strict Variant typing)
   const barVariants = {
     hidden: { height: "0%", opacity: 0 },
-    visible: {
-      height: "100%",
-      opacity: 1,
-      transition: { duration: 0.5, ease: "easeOut" as const },
-    },
+    visible: { height: "100%", opacity: 1 },
   };
   
   // Custom color stops for the gradient effect on the bars
@@ -163,6 +159,7 @@ export const FreelancerStatsCard = React.forwardRef<
                         backgroundColor: color,
                      }}
                     variants={barVariants}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
                  />
               </div>
             );
