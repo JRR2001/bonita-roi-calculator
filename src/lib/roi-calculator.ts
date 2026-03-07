@@ -1,7 +1,17 @@
 /**
  * ROI calculator for Cap Cana / Bonita market.
- * Uses benchmark rules based on real Cap Cana market data.
+ * Benchmarks corregidos: playa artificial (no beachfront); vistas MAR/OCÉANO = vistas reales al océano.
+ * Fuentes: The Latin Investor 2026, PuntaCanaVilla.com 2025-2026, Airbtics 2025, Global Property Guide 2025, OwnDominican.com 2025, CONFOTUR Ley 158-01.
  */
+
+/** Escenarios de ocupación (Airbtics 2025: mediana 49%; prime 65-75%). Por defecto: moderado. */
+export const OCUPACION_SCENARIOS = {
+  conservador: 0.52, // Mediana real Airbnb Punta Cana (Airbtics 2025: 49%)
+  moderado: 0.65, // Propiedades bien gestionadas Cap Cana resort
+  optimista: 0.75, // Premium alta temporada, gestión profesional
+} as const;
+
+export type OcupacionScenario = keyof typeof OCUPACION_SCENARIOS;
 
 export interface ROIInputs {
   precioUSD: number;
@@ -38,7 +48,9 @@ export interface ROIResult {
   savingsCONFOTURTransfer: number;
   /** CONFOTUR: ahorro por exención 1% anual durante 15 años. */
   savingsCONFOTURAnnual: number;
-  /** CONFOTUR: ahorro total estimado (transfer + 15 años). */
+  /** CONFOTUR: ahorro por exención ISR sobre rentas (10 años, 27%). */
+  savingsCONFOTURISR: number;
+  /** CONFOTUR: ahorro total estimado (transfer + 15 años + ISR 10 años). */
   savingsCONFOTUR: number;
   expenseBreakdown: ROIExpenseBreakdown;
 }
@@ -57,33 +69,33 @@ export interface ROIExpenseBreakdown {
   ingresoNetoMensual: number;
 }
 
-/** Base gross rental yield (annual %) by vista. Default 7% for unknown vistas. */
+/** Base gross rental yield (annual %) by vista. Playa = artificial resort; MAR/OCÉANO = vista real al océano. Default 7%. */
 const YIELD_BY_VISTA: Record<string, number> = {
-  PLAYA: 9,
-  "GOLF Y PLAYA": 8,
-  "GOLF Y PISCINA": 7.5,
-  "GOLF Y PISCINA + OCEANO": 8,
-  "MAR Y GOLF": 7.5,
-  GOLF: 7,
-  "MAR GOLF Y PLAYA": 8.5,
-  "MAR, GOLF Y PLAYA": 8.5,
+  PLAYA: 7.5, // Playa artificial de resort (laguna privada) — PuntaCanaVilla.com 2025, resort 7-8%
+  "GOLF Y PLAYA": 7.5, // Golf + playa artificial — benchmarks Cap Cana resort 7-8%
+  "GOLF Y PISCINA": 7, // Golf + piscina — The Latin Investor, golf Cap Cana 7-8%
+  "GOLF Y PISCINA + OCEANO": 8.5, // Vista real al océano — activo premium, +1-1.5pp vs golf interior
+  "MAR Y GOLF": 8, // Vista océano + golf — PuntaCanaVilla.com, ocean view premium Cap Cana
+  GOLF: 7, // Solo golf — estándar Cap Cana golf course
+  "MAR GOLF Y PLAYA": 8.5, // Vista oceánica + amenities — Cap Cana top-tier 8-9%
+  "MAR, GOLF Y PLAYA": 8.5, // Igual (variante nombre)
 };
 
-/** Base appreciation (annual %) by vista. Default 7% for unknown. */
+/** Base appreciation (annual %) by vista. Playa artificial no equivale a beachfront natural. Default 8%. */
 const APRECIACION_BY_VISTA: Record<string, number> = {
-  PLAYA: 8,
-  "GOLF Y PLAYA": 7.5,
-  "GOLF Y PISCINA": 7.5,
-  "GOLF Y PISCINA + OCEANO": 8,
-  "MAR Y GOLF": 7.5,
-  GOLF: 7.5,
-  "MAR GOLF Y PLAYA": 8.5,
-  "MAR, GOLF Y PLAYA": 8.5,
+  PLAYA: 9, // Playa artificial resort — The Latin Investor resort sin frente mar 9-10%
+  "GOLF Y PLAYA": 9, // Golf + playa artificial — resort premium Cap Cana 9-10%
+  "GOLF Y PISCINA": 8.5, // Golf + amenities — The Latin Investor golf Cap Cana 8-10%
+  "GOLF Y PISCINA + OCEANO": 11, // Vista real océano — driver principal; 12-15% beachfront reducido
+  "MAR Y GOLF": 10.5, // Vista océano + golf — Cap Cana luxury ocean view 10-12%
+  GOLF: 8.5, // Golf interior — The Latin Investor 9-12% (conservador interior)
+  "MAR GOLF Y PLAYA": 11.5, // Mejor combinación — top resort Cap Cana vista mar 11-13%
+  "MAR, GOLF Y PLAYA": 11.5, // Igual (variante nombre)
 };
 
 const MANAGEMENT_PCT = 0.22;
-/** HOA: 3.5 USD per m² per month. */
-const HOA_USD_PER_M2_PER_MONTH = 3.5;
+/** HOA: 4.5 USD per m² per month (PuntaCanaVilla.com 2026, Cap Cana premium 30-40% sobre base). */
+const HOA_USD_PER_M2_PER_MONTH = 4.5;
 /** 32 USD/month per bedroom (habitación) — Aprocap (Asociación de Cap Cana). Family and habitación de servicio pay 0. */
 const ROOM_FEE_PER_MONTH = 32;
 const MAINTENANCE_PCT = 0.01;
@@ -92,6 +104,10 @@ const CONFOTUR_TRANSFER_TAX_PCT = 0.03;
 /** CONFOTUR: 1% annual exemption during 15 years (15% total). */
 const CONFOTUR_ANNUAL_PCT = 0.01;
 const CONFOTUR_ANNUAL_YEARS = 15;
+/** CONFOTUR: exención ISR sobre rentas de alquiler (Ley 158-01). realestate-dominicanrepublic.com 2025. */
+const CONFOTUR_ISR_YEARS = 10;
+/** Tasa ISR RD (Ley 158-01) aplicable a rentas. */
+const ISR_RATE = 0.27;
 
 /**
  * Number of bedrooms that pay the 32 USD/month fee.
@@ -119,7 +135,7 @@ function getBaseYield(vista: string): number {
 
 function getBaseApreciacion(vista: string): number {
   const key = normalizeVista(vista);
-  return APRECIACION_BY_VISTA[key] ?? 7;
+  return APRECIACION_BY_VISTA[key] ?? 8;
 }
 
 /** Floor multiplier: nivel >= 6 adds +0.5%, nivel >= 4 adds +0.25%. */
@@ -144,7 +160,7 @@ export function calculateROI(input: ROIInputs): ROIResult {
     vista,
     nivel,
     tipologia,
-    ocupacionRate = 0.7,
+    ocupacionRate = OCUPACION_SCENARIOS.moderado,
     horizonte = 5,
   } = input;
 
@@ -209,7 +225,15 @@ export function calculateROI(input: ROIInputs): ROIResult {
   const savingsCONFOTURTransfer = precioCompra * CONFOTUR_TRANSFER_TAX_PCT;
   const savingsCONFOTURAnnual =
     precioCompra * CONFOTUR_ANNUAL_PCT * CONFOTUR_ANNUAL_YEARS;
-  const savingsCONFOTUR = savingsCONFOTURTransfer + savingsCONFOTURAnnual;
+  // Renta neta acumulada en los primeros 10 años (o horizonte si menor) — base para exención ISR
+  const añosParaISR = Math.min(años, CONFOTUR_ISR_YEARS);
+  const rentaNetaAcumuladaPrimeros10 =
+    añosParaISR > 0 && valorFuturo[añosParaISR - 1]
+      ? valorFuturo[añosParaISR - 1].rentaAcumulada
+      : 0;
+  const savingsCONFOTURISR = rentaNetaAcumuladaPrimeros10 * ISR_RATE;
+  const savingsCONFOTUR =
+    savingsCONFOTURTransfer + savingsCONFOTURAnnual + savingsCONFOTURISR;
 
   const expenseBreakdown: ROIExpenseBreakdown = {
     ingresoBrutoAnual: Math.round(rentaBrutaAnual * 100) / 100,
@@ -240,6 +264,7 @@ export function calculateROI(input: ROIInputs): ROIResult {
     breakEvenAños: breakEven,
     savingsCONFOTURTransfer: Math.round(savingsCONFOTURTransfer * 100) / 100,
     savingsCONFOTURAnnual: Math.round(savingsCONFOTURAnnual * 100) / 100,
+    savingsCONFOTURISR: Math.round(savingsCONFOTURISR * 100) / 100,
     savingsCONFOTUR: Math.round(savingsCONFOTUR * 100) / 100,
     expenseBreakdown,
   };

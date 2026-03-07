@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import { motion } from "motion/react";
-import { calculateROI } from "@/lib/roi-calculator";
+import { calculateROI, OCUPACION_SCENARIOS } from "@/lib/roi-calculator";
 import type { Unit } from "@/data/units";
 import { getEffectiveVista } from "@/data/units";
 import { Slider } from "@/components/ui/slider";
@@ -33,9 +33,9 @@ interface ROIDisplayProps {
 }
 
 function ocupacionLabel(pct: number): string {
-  if (pct <= 62) return "Conservadora (60%)";
-  if (pct <= 77) return "Moderada (70%)";
-  return "Optimista (85%)";
+  if (pct <= 57) return "Conservadora (52%)";
+  if (pct <= 70) return "Moderada (65%)";
+  return "Optimista (75%)";
 }
 
 function formatUSD(n: number) {
@@ -70,7 +70,9 @@ function getPlanoImagePath(tipologia: string): string | null {
 }
 
 export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
-  const [ocupacionPct, setOcupacionPct] = useState(70);
+  const [ocupacionPct, setOcupacionPct] = useState(
+    Math.round(OCUPACION_SCENARIOS.moderado * 100)
+  );
   const [horizonte, setHorizonte] = useState(5);
 
   const effectiveVista = getEffectiveVista(unit);
@@ -220,6 +222,41 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
             <label className="block text-sm text-white/70 mb-2">
               Ocupación estimada
             </label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {(
+                [
+                  {
+                    key: "conservador" as const,
+                    label: "Conservador",
+                    pct: Math.round(OCUPACION_SCENARIOS.conservador * 100),
+                  },
+                  {
+                    key: "moderado" as const,
+                    label: "Moderado",
+                    pct: Math.round(OCUPACION_SCENARIOS.moderado * 100),
+                  },
+                  {
+                    key: "optimista" as const,
+                    label: "Optimista",
+                    pct: Math.round(OCUPACION_SCENARIOS.optimista * 100),
+                  },
+                ] as const
+              ).map(({ key, label, pct }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setOcupacionPct(pct)}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-sm font-medium transition-all",
+                    ocupacionPct === pct
+                      ? "bg-[#C9A96E] text-[#0D1B2A]"
+                      : "bg-white/10 text-white/80 hover:bg-white/15"
+                  )}
+                >
+                  {label} ({pct}%)
+                </button>
+              ))}
+            </div>
             <Slider
               value={[ocupacionPct]}
               onValueChange={([v]) => setOcupacionPct(v)}
@@ -535,14 +572,19 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
           >
             ✦ Beneficio CONFOTUR
           </h3>
-          <p className="text-sm text-white/90 leading-relaxed">
+          <p className="text-sm text-white/90 leading-relaxed mb-3">
             Al ser un proyecto certificado CONFOTUR, esta unidad está exenta de: (1){" "}
             <strong>impuesto de transferencia de propiedad</strong> — 3% sobre el valor total del
             inmueble (ahorro:{" "}
             <strong style={{ color: GOLD }}>${formatUSD(roi.savingsCONFOTURTransfer)} USD</strong>
             ); (2) <strong>1% anual durante 15 años</strong> (ahorro estimado:{" "}
             <strong style={{ color: GOLD }}>${formatUSD(roi.savingsCONFOTURAnnual)} USD</strong>
-            ). Ahorro total estimado:{" "}
+            ); (3) <strong>exención ISR sobre alquileres (10 años)</strong> — ahorro estimado sobre
+            renta neta:{" "}
+            <strong style={{ color: GOLD }}>${formatUSD(roi.savingsCONFOTURISR)} USD</strong>.
+          </p>
+          <p className="text-sm text-white/90">
+            Ahorro total estimado CONFOTUR:{" "}
             <strong style={{ color: GOLD }}>${formatUSD(roi.savingsCONFOTUR)} USD</strong>.
           </p>
         </div>
@@ -550,10 +592,19 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
 
       {/* SECTION 7: Disclaimer */}
       <section className="max-w-5xl mx-auto px-4 py-8 pb-16">
+        <p className="text-xs text-white/40 max-w-2xl leading-relaxed mb-3">
+          La vista &quot;PLAYA&quot; corresponde a playa artificial privada de resort (no primera
+          línea de mar). Las vistas &quot;MAR/OCÉANO&quot; corresponden a vistas panorámicas reales
+          al océano Atlántico. Las proyecciones se basan en benchmarks de mercado y no constituyen
+          garantía de rentabilidad.
+        </p>
         <p className="text-xs text-white/40 max-w-2xl leading-relaxed">
-          Las proyecciones se basan en benchmarks del mercado de Cap Cana y Punta Cana (2024-2026).
-          No constituyen garantía de rentabilidad. Fuentes: The Latin Investor, PuntaCanaVilla.com,
-          Coldwell Banker DR.
+          Fuentes: The Latin Investor (2026) — Apreciación Cap Cana 9-12% resort, 12-18% beachfront
+          natural. Airbtics (2025) — Ocupación mediana Punta Cana 49%; propiedades prime 65-75%.
+          PuntaCanaVilla.com (2025-2026) — Yield bruto 6-12% Cap Cana; HOA premium +30-40% Cap Cana.
+          Global Property Guide (2025) — RD residencial +7-12% anual. OwnDominican.com (2025) — ROI
+          bruto 6-12% Cap Cana. CONFOTUR Ley 158-01 — Exención transferencia 3%, IPI 1%×15 años,
+          ISR alquileres 10 años.
         </p>
       </section>
     </div>

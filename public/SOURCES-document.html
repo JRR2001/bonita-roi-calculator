@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fuentes y metodología – Bonita ROI Calculator</title>
+  <style>
+    @media print { body { max-width: 100%; } .no-print { display: none; } }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; color: #1a1a1a; line-height: 1.5; }
+    h1 { font-size: 1.5rem; border-bottom: 2px solid #C9A96E; padding-bottom: 0.5rem; }
+    h2 { font-size: 1.2rem; margin-top: 1.5rem; color: #0D1B2A; }
+    h3 { font-size: 1.05rem; margin-top: 1rem; }
+    table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.9rem; }
+    th, td { border: 1px solid #ccc; padding: 0.4rem 0.6rem; text-align: left; }
+    th { background: #f0f0f0; font-weight: 600; }
+    ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+    p { margin: 0.5rem 0; }
+    strong { color: #0D1B2A; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 1.5rem 0; }
+    .note { font-size: 0.85rem; color: #555; margin-top: 0.5rem; }
+    .no-print { background: #C9A96E; color: #0D1B2A; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <p class="no-print"><strong>Para guardar como PDF:</strong> Archivo → Imprimir → Guardar como PDF (o imprimir a PDF). Para Word: abre el PDF en Word y guarda como .docx, o copia y pega desde esta página.</p>
+
+  <h1>Fuentes y metodología – Bonita ROI Calculator</h1>
+  <p>Este documento lista <strong>todas las fuentes y supuestos</strong> usados para los benchmarks, rentabilidades y proyecciones de la herramienta.</p>
+
+  <hr>
+  <h2>1. Fuentes citadas en la app</h2>
+  <p>En el disclaimer del panel de proyección (ROIDisplay) se mencionan:</p>
+  <ul>
+    <li><strong>The Latin Investor</strong> – benchmarks de mercado Cap Cana / Punta Cana</li>
+    <li><strong>PuntaCanaVilla.com</strong> – datos de alquiler y yield en la zona</li>
+    <li><strong>Coldwell Banker DR</strong> – referencias de mercado inmobiliario en República Dominicana</li>
+  </ul>
+  <p>El comentario del código (<code>src/lib/roi-calculator.ts</code>) indica: <em>"Uses benchmark rules based on real Cap Cana market data"</em>. No se referencian informes concretos con URL; los porcentajes por vista/tipología son <strong>supuestos de proyecto</strong> alineados con rangos típicos del mercado (p. ej. yield 6–12%, apreciación ~8.4%).</p>
+
+  <hr>
+  <h2>2. Parámetros del calculador</h2>
+
+  <h3>2.1 Yield bruto anual por vista (%)</h3>
+  <table>
+    <tr><th>Vista</th><th>Yield bruto</th><th>Origen / nota</th></tr>
+    <tr><td>PLAYA</td><td>9%</td><td>Benchmark mercado (vista playa premium)</td></tr>
+    <tr><td>GOLF Y PLAYA</td><td>8%</td><td>Benchmark mercado</td></tr>
+    <tr><td>GOLF Y PISCINA</td><td>7.5%</td><td>Benchmark mercado</td></tr>
+    <tr><td>GOLF Y PISCINA + OCEANO</td><td>8%</td><td>Benchmark mercado (vista oceano)</td></tr>
+    <tr><td>MAR/OCEANO Y GOLF</td><td>7.5%</td><td>Benchmark mercado</td></tr>
+    <tr><td>GOLF</td><td>7%</td><td>Benchmark mercado (solo golf)</td></tr>
+    <tr><td>MAR/OCEANO GOLF Y PLAYA</td><td>8.5%</td><td>Benchmark mercado</td></tr>
+    <tr><td>MAR/OCEANO, GOLF Y PLAYA</td><td>8.5%</td><td>Benchmark mercado</td></tr>
+    <tr><td><em>Cualquier otra</em></td><td>7%</td><td>Valor por defecto</td></tr>
+  </table>
+  <p class="note">Fuente de referencia: rangos 6–12% en Cap Cana (citados en la app). Los valores por vista son estimaciones internas dentro de ese rango.</p>
+
+  <h3>2.2 Apreciación anual por vista (%)</h3>
+  <table>
+    <tr><th>Vista</th><th>Apreciación anual</th><th>Origen / nota</th></tr>
+    <tr><td>PLAYA</td><td>8%</td><td>Benchmark mercado</td></tr>
+    <tr><td>GOLF Y PLAYA</td><td>7.5%</td><td>Benchmark mercado</td></tr>
+    <tr><td>GOLF Y PISCINA</td><td>7.5%</td><td>Benchmark mercado</td></tr>
+    <tr><td>GOLF Y PISCINA + OCEANO</td><td>8%</td><td>Benchmark mercado</td></tr>
+    <tr><td>MAR/OCEANO Y GOLF</td><td>7.5%</td><td>Benchmark mercado</td></tr>
+    <tr><td>GOLF</td><td>7.5%</td><td>Benchmark mercado</td></tr>
+    <tr><td>MAR/OCEANO GOLF Y PLAYA</td><td>8.5%</td><td>Benchmark mercado</td></tr>
+    <tr><td>MAR/OCEANO, GOLF Y PLAYA</td><td>8.5%</td><td>Benchmark mercado</td></tr>
+    <tr><td><em>Cualquier otra</em></td><td>7%</td><td>Valor por defecto</td></tr>
+  </table>
+  <p class="note">Referencia: "8.4% apreciación anual media en Cap Cana (2020–2025)" en landing y marquesina.</p>
+
+  <h3>2.3 Bonos y ajustes</h3>
+  <ul>
+    <li><strong>Planta:</strong> ≥6: +0,5% yield; ≥4: +0,25% yield. Criterio interno (plantas altas, mejor vista/demanda).</li>
+    <li><strong>Tipología:</strong> Hab de Servicio/HS: +0,5% yield; 1 Hab principal: −0,25%. Criterio interno (rental program).</li>
+  </ul>
+
+  <h3>2.4 Gastos y costes</h3>
+  <table>
+    <tr><th>Concepto</th><th>Valor</th><th>Origen</th></tr>
+    <tr><td>Gestión (management)</td><td>22% del ingreso bruto</td><td>Estándar alquiler vacacional</td></tr>
+    <tr><td>Cuota comunitaria HOA</td><td>3,5 USD/m²/mes</td><td>Comentario en código (HOA Cap Cana)</td></tr>
+    <tr><td>Cuota por habitación</td><td>32 USD/mes por hab.</td><td>Aprocap (Asociación de Cap Cana) – solo hab. principales</td></tr>
+    <tr><td>Reserva mantenimiento</td><td>1% del valor de compra/año</td><td>Supuesto estándar</td></tr>
+  </table>
+
+  <h3>2.5 CONFOTUR</h3>
+  <table>
+    <tr><th>Concepto</th><th>Valor</th><th>Origen</th></tr>
+    <tr><td>Exención impuesto transferencia</td><td>3% una vez</td><td>Régimen CONFOTUR</td></tr>
+    <tr><td>Exención anual</td><td>1% anual × 15 años</td><td>Régimen CONFOTUR</td></tr>
+  </table>
+
+  <hr>
+  <h2>3. Cómo se generan las proyecciones</h2>
+
+  <h3>3.1 Rentas</h3>
+  <ul>
+    <li>Renta bruta anual = Precio de compra × (Yield bruto / 100).</li>
+    <li>Renta bruta mensual = Renta bruta anual / 12.</li>
+    <li>Renta mensual estimada = Renta bruta mensual × Tasa de ocupación (por defecto 70%).</li>
+  </ul>
+
+  <h3>3.2 Gastos anuales</h3>
+  <p>Gestión = Renta bruta anual × 22%. HOA = m² × 3,5 USD/m²/mes × 12. Cuota hab. = Hab. que pagan × 32 USD/mes × 12. Mantenimiento = Precio compra × 1%.</p>
+  <p>Renta neta anual = Renta bruta anual − Gastos anuales. Yield neto = (Renta neta anual / Precio compra) × 100.</p>
+
+  <h3>3.3 Proyección año a año</h3>
+  <p>Para cada año: (1) Valor = Valor anterior × (1 + Apreciación anual/100). (2) Ingresos = Valor × (Yield bruto/100) × Ocupación. (3) Gastos con el mismo criterio. (4) Renta acumulada = suma de (Ingresos − Gastos). (5) Retorno total % = (Valor − Precio compra + Renta acumulada) / Precio compra × 100.</p>
+  <p>Los “+40–50%” en la landing son rangos ilustrativos a 5 años, no garantía.</p>
+
+  <h3>3.4 Ahorro CONFOTUR</h3>
+  <p>Ahorro transferencia = Precio × 3%. Ahorro 15 años = Precio × 1% × 15. Total = suma de ambos.</p>
+
+  <hr>
+  <h2>4. Dónde aparece en el código</h2>
+  <table>
+    <tr><th>Concepto</th><th>Archivo</th><th>Variable / sección</th></tr>
+    <tr><td>Yield por vista</td><td>src/lib/roi-calculator.ts</td><td>YIELD_BY_VISTA</td></tr>
+    <tr><td>Apreciación por vista</td><td>src/lib/roi-calculator.ts</td><td>APRECIACION_BY_VISTA</td></tr>
+    <tr><td>Gestión 22%</td><td>src/lib/roi-calculator.ts</td><td>MANAGEMENT_PCT</td></tr>
+    <tr><td>HOA, cuota hab., CONFOTUR</td><td>src/lib/roi-calculator.ts</td><td>HOA_USD_*, ROOM_FEE_*, CONFOTUR_*</td></tr>
+    <tr><td>Stats landing</td><td>src/app/page.tsx</td><td>MARKET_STATS</td></tr>
+    <tr><td>Disclaimer y fuentes</td><td>src/components/ROIDisplay.tsx</td><td>Sección Disclaimer</td></tr>
+  </table>
+
+  <hr>
+  <h2>5. Resumen</h2>
+  <ul>
+    <li><strong>Fuentes citadas en la app:</strong> The Latin Investor, PuntaCanaVilla.com, Coldwell Banker DR; benchmarks Cap Cana y Punta Cana (2024-2026).</li>
+    <li><strong>Cifras de referencia:</strong> 8.4% apreciación media; yield 6–12%; +40–50% a 5 años (ilustrativo).</li>
+    <li>Porcentajes por vista, bonos, HOA, gestión, mantenimiento y CONFOTUR son <strong>supuestos de proyecto</strong>, no extraídos de un único informe con URL.</li>
+    <li>Las proyecciones se generan con las fórmulas descritas; no son garantía de rentabilidad.</li>
+  </ul>
+</body>
+</html>
