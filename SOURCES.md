@@ -75,11 +75,11 @@ En el disclaimer del panel de proyección (ROIDisplay) se mencionan:
 
 ### 2.6 Escenarios de ocupación
 
-| Escenario    | Tasa | Origen / nota |
-|-------------|------|----------------|
-| Conservador | 52%  | Mediana real Airbnb Punta Cana (Airbtics 2025: 49%). |
-| Moderado    | 65%  | Propiedades bien gestionadas Cap Cana resort. **Por defecto.** |
-| Optimista   | 75%  | Premium alta temporada, gestión profesional. |
+| Escenario    | Tasa | Franja en slider |
+|-------------|------|------------------|
+| Conservador | 50%  | 50% hasta &lt;70%. |
+| Moderado    | 70%  | 70% hasta &lt;85%. **Por defecto.** |
+| Optimista   | 85%  | 85% o más. |
 
 Constante en código: `OCUPACION_SCENARIOS` (`src/lib/roi-calculator.ts`).
 
@@ -108,7 +108,7 @@ Constantes en código: `CONSTRUCTION_START`, `SUNRISE_DELIVERY`, `SUNSET_DELIVER
 
 - **Renta bruta anual** = Precio de compra × (Yield bruto / 100).
 - **Renta bruta mensual** = Renta bruta anual / 12.
-- **Renta mensual estimada (con ocupación)** = Renta bruta mensual × Tasa de ocupación (por defecto **65%** — escenario moderado).
+- **Renta mensual estimada (con ocupación)** = Renta bruta mensual × Tasa de ocupación (por defecto **70%** — escenario moderado).
 
 El yield bruto es el de la tabla por vista + bonos de planta y tipología.
 
@@ -162,7 +162,7 @@ Sin fase (modelo legacy): mismo bucle desde año 1 con valor inicial = precio de
 
 - **Contexto:** PLAYA = playa artificial de resort; MAR/OCÉANO = vistas reales al océano. Yields y apreciación de playa corregidos a la baja vs. beachfront natural.
 - **Fuentes:** The Latin Investor 2026, Airbtics 2025, PuntaCanaVilla.com 2025-2026, Global Property Guide 2025, OwnDominican.com 2025, CONFOTUR Ley 158-01.
-- **Ocupación por defecto:** 65% (moderado). Escenarios: conservador 52%, moderado 65%, optimista 75%.
+- **Ocupación por defecto:** 70% (moderado). Escenarios: conservador 50%, moderado 70%, optimista 85%. Slider 1% (50–95%). Franjas: 50–69% Conservador, 70–84% Moderado, 85%+ Optimista.
 - **HOA:** 3,5 USD/m²/mes (Bonita Residences).
 - **CONFOTUR:** Transferencia 3%, IPI 1%×15 años, **exención ISR sobre rentas 10 años (27%)**.
 - **Cronograma:** Inicio obra Oct 2026; entrega Sunrise Dic 2028, Sunset Jul 2029. Plusvalía durante construcción; renta solo desde la entrega. CONFOTUR ISR 10 años desde la entrega.

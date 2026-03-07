@@ -32,10 +32,11 @@ interface ROIDisplayProps {
   onBack?: () => void;
 }
 
+/** Etiqueta según franja: 50–69% Conservador, 70–84% Moderado, 85%+ Optimista. */
 function ocupacionLabel(pct: number): string {
-  if (pct <= 57) return "Conservadora (52%)";
-  if (pct <= 70) return "Moderada (65%)";
-  return "Optimista (75%)";
+  if (pct >= 85) return "Optimista";
+  if (pct >= 70) return "Moderado";
+  return "Conservador";
 }
 
 function formatUSD(n: number) {
@@ -320,8 +321,8 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
               value={[ocupacionPct]}
               onValueChange={([v]) => setOcupacionPct(v)}
               min={50}
-              max={90}
-              step={5}
+              max={95}
+              step={1}
               className="py-4"
             />
             <p className="text-sm mt-1" style={{ color: GOLD }}>

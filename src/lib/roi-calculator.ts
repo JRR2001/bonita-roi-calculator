@@ -4,11 +4,11 @@
  * Fuentes: The Latin Investor 2026, PuntaCanaVilla.com 2025-2026, Airbtics 2025, Global Property Guide 2025, OwnDominican.com 2025, CONFOTUR Ley 158-01.
  */
 
-/** Escenarios de ocupación (Airbtics 2025: mediana 49%; prime 65-75%). Por defecto: moderado. */
+/** Escenarios de ocupación. Por defecto: moderado (70%). */
 export const OCUPACION_SCENARIOS = {
-  conservador: 0.52, // Mediana real Airbnb Punta Cana (Airbtics 2025: 49%)
-  moderado: 0.65, // Propiedades bien gestionadas Cap Cana resort
-  optimista: 0.75, // Premium alta temporada, gestión profesional
+  conservador: 0.5,  // 50%
+  moderado: 0.7,     // 70%
+  optimista: 0.85,   // 85%
 } as const;
 
 export type OcupacionScenario = keyof typeof OCUPACION_SCENARIOS;
@@ -194,7 +194,7 @@ export function calculateROI(input: ROIInputs): ROIResult {
     fase,
   } = input;
 
-  const ocupacion = Math.min(0.9, Math.max(0.5, ocupacionRate));
+  const ocupacion = Math.min(0.95, Math.max(0.5, ocupacionRate));
   const años = Math.min(10, Math.max(1, Math.round(horizonte)));
 
   const precioCompra = precioUSD;
