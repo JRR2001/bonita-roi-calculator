@@ -85,9 +85,26 @@ Constante en código: `OCUPACION_SCENARIOS` (`src/lib/roi-calculator.ts`).
 
 ---
 
-## 3. Cómo se generan las proyecciones
+## 3. Cronograma del proyecto (compra sobre plano)
 
-### 3.1 Rentas
+- **Inicio de obra:** Octubre 2026.
+- **Entrega por fase:**
+  - **Sunrise:** Diciembre 2028 (aprox. 26 meses de construcción).
+  - **Sunset:** Julio 2029 (aprox. 33 meses de construcción).
+
+En el modelo de proyección:
+
+- **Durante la construcción** (desde Oct 2026 hasta la entrega de cada fase): solo se aplica **apreciación** al valor del inmueble (plusvalía sobre plano). No hay ingresos por alquiler ni gastos de gestión/HOA de uso hasta la entrega.
+- **A partir de la entrega:** se aplica apreciación año a año y se suman **renta bruta × ocupación** menos gastos (gestión 22%, HOA, cuota hab., mantenimiento). La renta neta acumulada y el retorno total incluyen solo el periodo post-entrega.
+- **CONFOTUR ISR:** Los 10 años de exención sobre rentas se cuentan desde la **primera renta** (a partir de la entrega), no desde la compra.
+
+Constantes en código: `CONSTRUCTION_START`, `SUNRISE_DELIVERY`, `SUNSET_DELIVERY`, `getConstructionYearsAndLabel()` en `src/lib/roi-calculator.ts`.
+
+---
+
+## 4. Cómo se generan las proyecciones
+
+### 4.1 Rentas
 
 - **Renta bruta anual** = Precio de compra × (Yield bruto / 100).
 - **Renta bruta mensual** = Renta bruta anual / 12.
@@ -95,7 +112,7 @@ Constante en código: `OCUPACION_SCENARIOS` (`src/lib/roi-calculator.ts`).
 
 El yield bruto es el de la tabla por vista + bonos de planta y tipología.
 
-### 3.2 Gastos anuales
+### 4.2 Gastos anuales
 
 - Gestión = Renta bruta anual × 22%.
 - HOA = m² × **4,5** USD/m²/mes × 12.
@@ -105,26 +122,26 @@ El yield bruto es el de la tabla por vista + bonos de planta y tipología.
 **Renta neta anual** = Renta bruta anual − Gastos anuales.  
 **Yield neto** = (Renta neta anual / Precio compra) × 100.
 
-### 3.3 Proyección año a año (valor + renta acumulada)
+### 4.3 Proyección año a año (valor + renta acumulada)
 
-Para cada año del horizonte (por defecto 5 años):
+Con **fase** (Sunrise/Sunset) — modelo sobre plano:
 
-1. **Valor del inmueble:** Valor año anterior × (1 + Apreciación anual / 100).
-2. **Ingresos por alquiler ese año:** Valor del inmueble ese año × (Yield bruto / 100) × Tasa de ocupación.
-3. **Gastos ese año:** 22% gestión, HOA, cuota hab., 1% sobre valor de ese año.
-4. **Renta neta acumulada:** Suma de (Ingresos − Gastos) hasta ese año.
-5. **Retorno total (%)** = (Valor − Precio compra + Renta acumulada) / Precio compra × 100.
+1. **Valor a la entrega:** Precio compra × (1 + Apreciación anual / 100)^(años de construcción). Duración construcción: Sunrise 26/12 años, Sunset 33/12 años.
+2. **Año 0 (entrega):** Valor = valor a la entrega; renta acumulada = 0.
+3. **Años 1 a horizonte (post-entrega):** Para cada año: valor = valor anterior × (1 + Apreciación / 100); ingresos por alquiler = valor × (Yield bruto / 100) × Ocupación; gastos = 22% gestión, HOA, cuota hab., 1% sobre valor; renta acumulada += (ingresos − gastos). **Retorno total (%)** = (Valor − Precio compra + Renta acumulada) / Precio compra × 100.
 
-### 3.4 Ahorro CONFOTUR
+Sin fase (modelo legacy): mismo bucle desde año 1 con valor inicial = precio de compra.
+
+### 4.4 Ahorro CONFOTUR
 
 - Ahorro transferencia = Precio compra × 3%.
 - Ahorro 15 años (IPI) = Precio compra × 1% × 15.
-- Ahorro ISR = Renta neta acumulada (primeros 10 años o horizonte) × 27%.
+- Ahorro ISR = Renta neta acumulada (primeros 10 años desde la entrega, o horizonte si menor) × 27%.
 - **Ahorro total CONFOTUR** = suma de los tres.
 
 ---
 
-## 4. Dónde aparece cada cosa en el código
+## 5. Dónde aparece cada cosa en el código
 
 | Concepto                | Archivo                    | Variable / constante |
 |-------------------------|----------------------------|----------------------|
@@ -141,11 +158,12 @@ Para cada año del horizonte (por defecto 5 años):
 
 ---
 
-## 5. Resumen
+## 6. Resumen
 
 - **Contexto:** PLAYA = playa artificial de resort; MAR/OCÉANO = vistas reales al océano. Yields y apreciación de playa corregidos a la baja vs. beachfront natural.
 - **Fuentes:** The Latin Investor 2026, Airbtics 2025, PuntaCanaVilla.com 2025-2026, Global Property Guide 2025, OwnDominican.com 2025, CONFOTUR Ley 158-01.
 - **Ocupación por defecto:** 65% (moderado). Escenarios: conservador 52%, moderado 65%, optimista 75%.
 - **HOA:** 4,5 USD/m²/mes (Cap Cana premium).
 - **CONFOTUR:** Transferencia 3%, IPI 1%×15 años, **exención ISR sobre rentas 10 años (27%)**.
+- **Cronograma:** Inicio obra Oct 2026; entrega Sunrise Dic 2028, Sunset Jul 2029. Plusvalía durante construcción; renta solo desde la entrega. CONFOTUR ISR 10 años desde la entrega.
 - Las proyecciones se generan con las fórmulas anteriores; no son garantía de rentabilidad.

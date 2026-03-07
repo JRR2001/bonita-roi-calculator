@@ -86,15 +86,18 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
         tipologia: unit.tipologia,
         ocupacionRate: ocupacionPct / 100,
         horizonte,
+        fase: unit.fase,
       }),
     [unit, effectiveVista, ocupacionPct, horizonte]
   );
 
   const animationKey = `${unit.id}-${ocupacionPct}-${horizonte}`;
   const valorEnNAnos =
-    roi.valorFuturo.length >= horizonte
-      ? roi.valorFuturo[horizonte - 1]?.valor ?? 0
-      : roi.valorFuturo[roi.valorFuturo.length - 1]?.valor ?? 0;
+    roi.isOffPlan && roi.valorFuturo.length > horizonte
+      ? roi.valorFuturo[horizonte]?.valor ?? roi.valorFuturo[roi.valorFuturo.length - 1]?.valor ?? 0
+      : roi.valorFuturo.length >= horizonte
+        ? roi.valorFuturo[horizonte - 1]?.valor ?? 0
+        : roi.valorFuturo[roi.valorFuturo.length - 1]?.valor ?? 0;
   const b = roi.expenseBreakdown;
 
   // Desglose según ocupación seleccionada (actualiza al cambiar ocupación/horizonte)
@@ -126,27 +129,38 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
 
   // Valores al horizonte seleccionado (para resumen bajo la tabla)
   const proyeccionAlHorizonte = useMemo(() => {
-    const last = roi.valorFuturo[horizonte - 1];
+    const last = roi.isOffPlan
+      ? roi.valorFuturo[horizonte] ?? roi.valorFuturo[roi.valorFuturo.length - 1]
+      : roi.valorFuturo[horizonte - 1];
     return last
       ? { valor: last.valor, rentaNetaAcumulada: last.rentaAcumulada }
       : { valor: roi.precioCompra, rentaNetaAcumulada: 0 };
-  }, [roi.valorFuturo, horizonte, roi.precioCompra]);
+  }, [roi.valorFuturo, horizonte, roi.precioCompra, roi.isOffPlan]);
 
-  // Punto inicial (Hoy) + proyección año a año para que la línea de valor empiece en precio de compra
-  const chartData = [
-    {
-      name: "Hoy",
-      year: 0,
-      valor: roi.precioCompra,
-      rentaAcumulada: 0,
-    },
-    ...roi.valorFuturo.slice(0, horizonte).map((row: ValorFuturoYear) => ({
-      name: `Año ${row.year}`,
-      year: row.year,
-      valor: row.valor,
-      rentaAcumulada: row.rentaAcumulada,
-    })),
-  ];
+  // Punto inicial + proyección. Sobre plano: Inicio obra (Oct 26) → Entrega → Año 1..N. Sin fase: Hoy → Año 1..N.
+  const chartData = useMemo(() => {
+    if (roi.isOffPlan && roi.deliveryLabel) {
+      const hasta = horizonte + 1; // incluir entrega (year 0) + años 1..horizonte
+      return [
+        { name: "Inicio obra (Oct 26)", year: -1, valor: roi.precioCompra, rentaAcumulada: 0 },
+        ...roi.valorFuturo.slice(0, hasta).map((row: ValorFuturoYear) => ({
+          name: row.year === 0 ? `Entrega (${roi.deliveryLabel})` : `Año ${row.year}`,
+          year: row.year,
+          valor: row.valor,
+          rentaAcumulada: row.rentaAcumulada,
+        })),
+      ];
+    }
+    return [
+      { name: "Hoy", year: 0, valor: roi.precioCompra, rentaAcumulada: 0 },
+      ...roi.valorFuturo.slice(0, horizonte).map((row: ValorFuturoYear) => ({
+        name: `Año ${row.year}`,
+        year: row.year,
+        valor: row.valor,
+        rentaAcumulada: row.rentaAcumulada,
+      })),
+    ];
+  }, [roi.isOffPlan, roi.deliveryLabel, roi.precioCompra, roi.valorFuturo, horizonte]);
 
   return (
     <div className="min-h-screen bg-[#0D1B2A]" style={{ fontFamily: "var(--font-inter)" }}>
@@ -374,7 +388,9 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
               prefix: "$",
               suffix: "",
               decimals: 0,
-              subtitle: "Proyección de valor del inmueble",
+              subtitle: roi.isOffPlan
+                ? `${horizonte} años tras la entrega (${roi.deliveryLabel ?? ""})`
+                : "Proyección de valor del inmueble",
             },
             {
               label: `Retorno Total en ${horizonte} años`,
@@ -430,6 +446,9 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
         <p className="text-sm text-white/50 mb-4">
           Valor de la propiedad (eje izquierdo) y renta neta acumulada (eje derecho) según la
           ocupación ({ocupacionPct}%) y el horizonte ({horizonte} años) seleccionados.
+          {roi.isOffPlan && roi.deliveryLabel && (
+            <> Inicio obra Oct 2026. La renta comienza a la entrega ({unit.fase} {roi.deliveryLabel}).</>
+          )}
         </p>
         <div className="rounded-xl overflow-hidden" style={{ backgroundColor: NAVY }}>
           <div style={{ width: "100%", height: 380 }}>
@@ -506,6 +525,19 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
                     fontSize: 10,
                   }}
                 />
+                {roi.isOffPlan && chartData[1]?.name && (
+                  <ReferenceLine
+                    x={chartData[1].name}
+                    stroke="rgba(255,255,255,0.4)"
+                    strokeDasharray="3 3"
+                    label={{
+                      value: "Entrega",
+                      position: "top",
+                      fill: "rgba(255,255,255,0.7)",
+                      fontSize: 10,
+                    }}
+                  />
+                )}
                 <Line
                   yAxisId="valor"
                   type="monotone"
@@ -551,6 +583,11 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
         <p className="text-sm text-white/50 mb-3">
           Desglose anual y mensual según ocupación <strong className="text-white/70">{ocupacionPct}%</strong>.
           Al cambiar ocupación u horizonte arriba, esta tabla y el gráfico se actualizan.
+          {roi.isOffPlan && (
+            <span className="block mt-2 text-white/60">
+              Los ingresos se refieren al periodo una vez entregada la unidad (Sunrise Dic 2028, Sunset Jul 2029).
+            </span>
+          )}
         </p>
         <div
           className="rounded-xl overflow-hidden border border-[#C9A96E]/20"
@@ -663,6 +700,8 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
       {/* SECTION 7: Disclaimer */}
       <section className="max-w-5xl mx-auto px-4 py-8 pb-16">
         <p className="text-xs text-white/40 max-w-2xl leading-relaxed mb-3">
+          Compra sobre plano: inicio de obra Oct 2026; entrega Sunrise Dic 2028 y Sunset Jul 2029.
+          La plusvalía se proyecta durante la construcción; la renta solo a partir de la entrega.
           La vista &quot;PLAYA&quot; corresponde a playa artificial privada de resort (no primera
           línea de mar). Las vistas &quot;MAR/OCÉANO&quot; corresponden a vistas panorámicas reales
           al océano Atlántico. Las proyecciones se basan en benchmarks de mercado y no constituyen

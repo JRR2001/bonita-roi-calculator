@@ -13,6 +13,9 @@ export const OCUPACION_SCENARIOS = {
 
 export type OcupacionScenario = keyof typeof OCUPACION_SCENARIOS;
 
+/** Fase del proyecto: determina fecha de entrega y duración de construcción. */
+export type FaseROI = "Sunrise" | "Sunset";
+
 export interface ROIInputs {
   precioUSD: number;
   totalM2: number;
@@ -21,6 +24,8 @@ export interface ROIInputs {
   tipologia: string;
   ocupacionRate?: number;
   horizonte?: number;
+  /** Si se indica, se aplica modelo sobre plano: plusvalía durante construcción, renta solo desde entrega. */
+  fase?: FaseROI;
 }
 
 export interface ValorFuturoYear {
@@ -53,6 +58,12 @@ export interface ROIResult {
   /** CONFOTUR: ahorro total estimado (transfer + 15 años + ISR 10 años). */
   savingsCONFOTUR: number;
   expenseBreakdown: ROIExpenseBreakdown;
+  /** Solo si fase: años desde inicio obra hasta entrega (plusvalía sin renta). */
+  constructionYears?: number;
+  /** Solo si fase: etiqueta de fecha de entrega, p. ej. "Dic 2028". */
+  deliveryLabel?: string;
+  /** true cuando se usa modelo sobre plano (fase definida). */
+  isOffPlan?: boolean;
 }
 
 /** Expense breakdown for display (annual and monthly). */
@@ -109,6 +120,21 @@ const CONFOTUR_ISR_YEARS = 10;
 /** Tasa ISR RD (Ley 158-01) aplicable a rentas. */
 const ISR_RATE = 0.27;
 
+/** Inicio de obra: octubre 2026. Entregas: Sunrise diciembre 2028, Sunset julio 2029. */
+const CONSTRUCTION_START = { year: 2026, month: 10 };
+const SUNRISE_DELIVERY = { year: 2028, month: 12 };
+const SUNSET_DELIVERY = { year: 2029, month: 7 };
+
+function getConstructionYearsAndLabel(fase: FaseROI): { years: number; label: string } {
+  const startMonths = CONSTRUCTION_START.year * 12 + CONSTRUCTION_START.month;
+  if (fase === "Sunrise") {
+    const endMonths = SUNRISE_DELIVERY.year * 12 + SUNRISE_DELIVERY.month;
+    return { years: (endMonths - startMonths) / 12, label: "Dic 2028" };
+  }
+  const endMonths = SUNSET_DELIVERY.year * 12 + SUNSET_DELIVERY.month;
+  return { years: (endMonths - startMonths) / 12, label: "Jul 2029" };
+}
+
 /**
  * Number of bedrooms that pay the 32 USD/month fee.
  * Only main "Hab" / "Habitaciones" count; Family and Hab de Servicio pay zero.
@@ -162,6 +188,7 @@ export function calculateROI(input: ROIInputs): ROIResult {
     tipologia,
     ocupacionRate = OCUPACION_SCENARIOS.moderado,
     horizonte = 5,
+    fase,
   } = input;
 
   const ocupacion = Math.min(0.9, Math.max(0.5, ocupacionRate));
@@ -191,6 +218,32 @@ export function calculateROI(input: ROIInputs): ROIResult {
   let valor = precioCompra;
   let rentaAcumulada = 0;
   let breakEvenAños = años + 1;
+  let constructionYears: number | undefined;
+  let deliveryLabel: string | undefined;
+  const isOffPlan = Boolean(fase);
+
+  if (fase) {
+    const { years: constructionY, label: deliveryL } =
+      getConstructionYearsAndLabel(fase);
+    constructionYears = constructionY;
+    deliveryLabel = deliveryL;
+    // Plusvalía durante construcción (sin renta). Valor a la entrega.
+    const valorAtDelivery =
+      precioCompra * Math.pow(1 + apreciacionAnual / 100, constructionY);
+    valorFuturo.push({
+      year: 0,
+      valor: Math.round(valorAtDelivery * 100) / 100,
+      rentaAcumulada: 0,
+      totalReturn:
+        precioCompra > 0
+          ? Math.round(
+              ((valorAtDelivery - precioCompra) / precioCompra) * 100 * 100
+            ) / 100
+          : 0,
+    });
+    valor = valorAtDelivery;
+    breakEvenAños = 0; // Plusvalía ya reflejada a la entrega
+  }
 
   for (let year = 1; year <= años; year++) {
     valor = valor * (1 + apreciacionAnual / 100);
@@ -213,7 +266,7 @@ export function calculateROI(input: ROIInputs): ROIResult {
       totalReturn: Math.round(totalReturnPct * 100) / 100,
     });
 
-    if (valor >= precioCompra && breakEvenAños > year) {
+    if (!isOffPlan && valor >= precioCompra && breakEvenAños > year) {
       breakEvenAños = year;
     }
   }
@@ -225,12 +278,12 @@ export function calculateROI(input: ROIInputs): ROIResult {
   const savingsCONFOTURTransfer = precioCompra * CONFOTUR_TRANSFER_TAX_PCT;
   const savingsCONFOTURAnnual =
     precioCompra * CONFOTUR_ANNUAL_PCT * CONFOTUR_ANNUAL_YEARS;
-  // Renta neta acumulada en los primeros 10 años (o horizonte si menor) — base para exención ISR
+  // ISR: exención sobre rentas en los primeros 10 años desde la ENTREGA (no desde compra)
   const añosParaISR = Math.min(años, CONFOTUR_ISR_YEARS);
+  const idxRenta10 =
+    isOffPlan ? añosParaISR : añosParaISR - 1; // off-plan: valorFuturo[0]=entrega, [1..años]=post; sin fase: [0..años-1]=año 1..años
   const rentaNetaAcumuladaPrimeros10 =
-    añosParaISR > 0 && valorFuturo[añosParaISR - 1]
-      ? valorFuturo[añosParaISR - 1].rentaAcumulada
-      : 0;
+    valorFuturo[idxRenta10]?.rentaAcumulada ?? valorFinal?.rentaAcumulada ?? 0;
   const savingsCONFOTURISR = rentaNetaAcumuladaPrimeros10 * ISR_RATE;
   const savingsCONFOTUR =
     savingsCONFOTURTransfer + savingsCONFOTURAnnual + savingsCONFOTURISR;
@@ -269,5 +322,10 @@ export function calculateROI(input: ROIInputs): ROIResult {
     savingsCONFOTURISR: Math.round(savingsCONFOTURISR * 100) / 100,
     savingsCONFOTUR: Math.round(savingsCONFOTUR * 100) / 100,
     expenseBreakdown,
+    ...(isOffPlan && {
+      constructionYears,
+      deliveryLabel,
+      isOffPlan: true,
+    }),
   };
 }
