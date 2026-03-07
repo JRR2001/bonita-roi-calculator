@@ -235,6 +235,8 @@ export function calculateROI(input: ROIInputs): ROIResult {
   const savingsCONFOTUR =
     savingsCONFOTURTransfer + savingsCONFOTURAnnual + savingsCONFOTURISR;
 
+  // Ingreso neto mensual = rentaNetaAnual/12 para que la tabla cuadre (Ingreso bruto - gastos = Ingreso neto).
+  const ingresoNetoMensualTabla = rentaNetaAnual / 12;
   const expenseBreakdown: ROIExpenseBreakdown = {
     ingresoBrutoAnual: Math.round(rentaBrutaAnual * 100) / 100,
     ingresoBrutoMensual: Math.round(rentaBrutaMensual * 100) / 100,
@@ -245,7 +247,7 @@ export function calculateROI(input: ROIInputs): ROIResult {
     reservaMantenimientoAnual: Math.round(maintenanceAnual * 100) / 100,
     reservaMantenimientoMensual: Math.round((maintenanceAnual / 12) * 100) / 100,
     ingresoNetoAnual: Math.round(rentaNetaAnual * 100) / 100,
-    ingresoNetoMensual: Math.round(rentaMensualEstimada * 100) / 100,
+    ingresoNetoMensual: Math.round(ingresoNetoMensualTabla * 100) / 100,
   };
 
   return {

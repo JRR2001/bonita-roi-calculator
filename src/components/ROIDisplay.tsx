@@ -12,7 +12,7 @@ import { NumberTicker } from "@/components/ui/number-ticker";
 import {
   ResponsiveContainer,
   ComposedChart,
-  Area,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -97,12 +97,21 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
       : roi.valorFuturo[roi.valorFuturo.length - 1]?.valor ?? 0;
   const b = roi.expenseBreakdown;
 
-  const chartData = roi.valorFuturo.slice(0, horizonte).map((row: ValorFuturoYear) => ({
-    name: `Año ${row.year}`,
-    year: row.year,
-    valor: row.valor,
-    rentaAcumulada: row.rentaAcumulada,
-  }));
+  // Punto inicial (Hoy) + proyección año a año para que la línea de valor empiece en precio de compra
+  const chartData = [
+    {
+      name: "Hoy",
+      year: 0,
+      valor: roi.precioCompra,
+      rentaAcumulada: 0,
+    },
+    ...roi.valorFuturo.slice(0, horizonte).map((row: ValorFuturoYear) => ({
+      name: `Año ${row.year}`,
+      year: row.year,
+      valor: row.valor,
+      rentaAcumulada: row.rentaAcumulada,
+    })),
+  ];
 
   return (
     <div className="min-h-screen bg-[#0D1B2A]" style={{ fontFamily: "var(--font-inter)" }}>
@@ -386,17 +395,10 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
         <div className="rounded-xl overflow-hidden" style={{ backgroundColor: NAVY }}>
           <div style={{ width: "100%", height: 380 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
-                <defs>
-                  <linearGradient id="roiValor" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={NAVY} stopOpacity={0.6} />
-                    <stop offset="100%" stopColor={NAVY} stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="roiRenta" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={GOLD} stopOpacity={0.4} />
-                    <stop offset="100%" stopColor={GOLD} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+              <ComposedChart
+                data={chartData}
+                margin={{ top: 12, right: 56, bottom: 12, left: 12 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis
                   dataKey="name"
@@ -405,10 +407,22 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
                   tickLine={false}
                 />
                 <YAxis
+                  yAxisId="valor"
+                  orientation="left"
                   tickFormatter={(v) =>
                     v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : `$${(v / 1_000).toFixed(0)}k`
                   }
-                  tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }}
+                  tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  yAxisId="renta"
+                  orientation="right"
+                  tickFormatter={(v) =>
+                    v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : `$${(v / 1_000).toFixed(0)}k`
+                  }
+                  tick={{ fill: GOLD, fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -425,46 +439,53 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
                         }}
                       >
                         <p className="text-white/90">
-                          {d.name} · Valor:{" "}
-                          <span style={{ color: GOLD }}>
+                          {d.name} · Valor propiedad:{" "}
+                          <span style={{ color: "rgba(255,255,255,0.95)" }}>
                             ${(d.valor as number).toLocaleString("en-US")}
                           </span>
                         </p>
                         <p className="text-white/80 mt-1">
-                          Renta acumulada: $
-                          {(d.rentaAcumulada as number).toLocaleString("en-US")}
+                          Renta acumulada:{" "}
+                          <span style={{ color: GOLD }}>
+                            ${(d.rentaAcumulada as number).toLocaleString("en-US")}
+                          </span>
                         </p>
                       </div>
                     );
                   }}
                 />
                 <ReferenceLine
+                  yAxisId="valor"
                   y={roi.precioCompra}
                   stroke={GOLD}
                   strokeDasharray="4 4"
-                  strokeOpacity={0.4}
+                  strokeOpacity={0.5}
                   label={{
                     value: "Precio de compra",
                     position: "right",
                     fill: GOLD,
-                    fontSize: 11,
+                    fontSize: 10,
                   }}
                 />
-                <Area
+                <Line
+                  yAxisId="valor"
                   type="monotone"
                   dataKey="valor"
                   name="Valor de la propiedad"
-                  fill="url(#roiValor)"
-                  stroke={NAVY}
-                  strokeWidth={2}
+                  stroke="rgba(255,255,255,0.9)"
+                  strokeWidth={2.5}
+                  dot={{ fill: NAVY, stroke: "rgba(255,255,255,0.9)", strokeWidth: 2 }}
+                  connectNulls
                 />
-                <Area
+                <Line
+                  yAxisId="renta"
                   type="monotone"
                   dataKey="rentaAcumulada"
                   name="Renta acumulada"
-                  fill="url(#roiRenta)"
                   stroke={GOLD}
-                  strokeWidth={1.5}
+                  strokeWidth={2}
+                  dot={{ fill: NAVY, stroke: GOLD, strokeWidth: 2 }}
+                  connectNulls
                 />
                 <Legend
                   wrapperStyle={{ paddingTop: 16 }}
@@ -508,7 +529,7 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
             </thead>
             <tbody className="text-sm">
               <tr className="border-b border-[#0D1B2A]/10">
-                <td className="py-3 px-4 text-[#0D1B2A]">Ingreso bruto estimado</td>
+                <td className="py-3 px-4 text-[#0D1B2A]">Ingreso bruto (100% ocupación)</td>
                 <td className="py-3 px-4 text-right text-[#0D1B2A]">
                   ${formatUSD(b.ingresoBrutoAnual)}
                 </td>
