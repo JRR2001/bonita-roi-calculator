@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import { motion } from "motion/react";
-import { calculateROI, OCUPACION_SCENARIOS } from "@/lib/roi-calculator";
+import { calculateROI, OCUPACION_SCENARIOS, MANAGEMENT_PCT } from "@/lib/roi-calculator";
 import type { Unit } from "@/data/units";
 import { getEffectiveVista } from "@/data/units";
 import { Slider } from "@/components/ui/slider";
@@ -105,7 +105,7 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
     const ocupacion = ocupacionPct / 100;
     const ingresoBrutoAnual = roi.rentaBrutaAnual * ocupacion;
     const ingresoBrutoMensual = ingresoBrutoAnual / 12;
-    const gestionAnual = ingresoBrutoAnual * 0.22;
+    const gestionAnual = ingresoBrutoAnual * MANAGEMENT_PCT;
     const gestionMensual = gestionAnual / 12;
     const cuotaAnual = b.cuotaComunitariaAnual;
     const cuotaMensual = b.cuotaComunitariaMensual;
@@ -657,10 +657,17 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
           </table>
         </div>
         <p className="text-sm text-white/50 mt-3">
-          Proyección a <strong className="text-white/70">{horizonte} años</strong>: valor estimado{" "}
-          <strong style={{ color: GOLD }}>${formatUSD(proyeccionAlHorizonte.valor)}</strong>
-          {" "}· Renta neta acumulada{" "}
-          <strong style={{ color: GOLD }}>${formatUSD(proyeccionAlHorizonte.rentaNetaAcumulada)}</strong>.
+          {roi.isOffPlan ? (
+            <>Proyección a <strong className="text-white/70">{horizonte} años tras la entrega</strong> (último punto del gráfico): valor estimado{" "}
+            <strong style={{ color: GOLD }}>${formatUSD(proyeccionAlHorizonte.valor)}</strong>
+            {" "}· Renta neta acumulada{" "}
+            <strong style={{ color: GOLD }}>${formatUSD(proyeccionAlHorizonte.rentaNetaAcumulada)}</strong>.</>
+          ) : (
+            <>Proyección a <strong className="text-white/70">{horizonte} años</strong> (último punto del gráfico): valor estimado{" "}
+            <strong style={{ color: GOLD }}>${formatUSD(proyeccionAlHorizonte.valor)}</strong>
+            {" "}· Renta neta acumulada{" "}
+            <strong style={{ color: GOLD }}>${formatUSD(proyeccionAlHorizonte.rentaNetaAcumulada)}</strong>.</>
+          )}
         </p>
       </section>
 

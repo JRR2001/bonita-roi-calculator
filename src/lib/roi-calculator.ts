@@ -104,9 +104,10 @@ const APRECIACION_BY_VISTA: Record<string, number> = {
   "MAR, GOLF Y PLAYA": 11.5, // Igual (variante nombre)
 };
 
-const MANAGEMENT_PCT = 0.22;
-/** HOA: 4.5 USD per m² per month (PuntaCanaVilla.com 2026, Cap Cana premium 30-40% sobre base). */
-const HOA_USD_PER_M2_PER_MONTH = 4.5;
+/** Gestión alquiler vacacional: 22% del ingreso bruto. Usado en calculador y desglose. */
+export const MANAGEMENT_PCT = 0.22;
+/** Cuota comunitaria HOA: 3.5 USD por m² por mes (Bonita Residences). */
+const HOA_USD_PER_M2_PER_MONTH = 3.5;
 /** 32 USD/month per bedroom (habitación) — Aprocap (Asociación de Cap Cana). Family and habitación de servicio pay 0. */
 const ROOM_FEE_PER_MONTH = 32;
 const MAINTENANCE_PCT = 0.01;
