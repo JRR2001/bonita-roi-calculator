@@ -97,6 +97,41 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
       : roi.valorFuturo[roi.valorFuturo.length - 1]?.valor ?? 0;
   const b = roi.expenseBreakdown;
 
+  // Desglose según ocupación seleccionada (actualiza al cambiar ocupación/horizonte)
+  const breakdownConOcupacion = useMemo(() => {
+    const ocupacion = ocupacionPct / 100;
+    const ingresoBrutoAnual = roi.rentaBrutaAnual * ocupacion;
+    const ingresoBrutoMensual = ingresoBrutoAnual / 12;
+    const gestionAnual = ingresoBrutoAnual * 0.22;
+    const gestionMensual = gestionAnual / 12;
+    const cuotaAnual = b.cuotaComunitariaAnual;
+    const cuotaMensual = b.cuotaComunitariaMensual;
+    const mantenimientoAnual = b.reservaMantenimientoAnual;
+    const mantenimientoMensual = b.reservaMantenimientoMensual;
+    const ingresoNetoAnual = ingresoBrutoAnual - gestionAnual - cuotaAnual - mantenimientoAnual;
+    const ingresoNetoMensual = ingresoNetoAnual / 12;
+    return {
+      ingresoBrutoAnual,
+      ingresoBrutoMensual,
+      gestionAnual,
+      gestionMensual,
+      cuotaAnual,
+      cuotaMensual,
+      mantenimientoAnual,
+      mantenimientoMensual,
+      ingresoNetoAnual,
+      ingresoNetoMensual,
+    };
+  }, [roi.rentaBrutaAnual, b.cuotaComunitariaAnual, b.reservaMantenimientoAnual, ocupacionPct]);
+
+  // Valores al horizonte seleccionado (para resumen bajo la tabla)
+  const proyeccionAlHorizonte = useMemo(() => {
+    const last = roi.valorFuturo[horizonte - 1];
+    return last
+      ? { valor: last.valor, rentaNetaAcumulada: last.rentaAcumulada }
+      : { valor: roi.precioCompra, rentaNetaAcumulada: 0 };
+  }, [roi.valorFuturo, horizonte, roi.precioCompra]);
+
   // Punto inicial (Hoy) + proyección año a año para que la línea de valor empiece en precio de compra
   const chartData = [
     {
@@ -387,11 +422,15 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
       {/* SECTION 4: Projection Chart */}
       <section className="max-w-5xl mx-auto px-4 py-8">
         <h2
-          className="text-xl mb-4"
+          className="text-xl mb-1"
           style={{ fontFamily: "var(--font-cormorant)", color: GOLD }}
         >
           Proyección de valor e ingresos
         </h2>
+        <p className="text-sm text-white/50 mb-4">
+          Valor de la propiedad (eje izquierdo) y renta neta acumulada (eje derecho) según la
+          ocupación ({ocupacionPct}%) y el horizonte ({horizonte} años) seleccionados.
+        </p>
         <div className="rounded-xl overflow-hidden" style={{ backgroundColor: NAVY }}>
           <div style={{ width: "100%", height: 380 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -445,7 +484,7 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
                           </span>
                         </p>
                         <p className="text-white/80 mt-1">
-                          Renta acumulada:{" "}
+                          Renta neta acumulada:{" "}
                           <span style={{ color: GOLD }}>
                             ${(d.rentaAcumulada as number).toLocaleString("en-US")}
                           </span>
@@ -481,7 +520,7 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
                   yAxisId="renta"
                   type="monotone"
                   dataKey="rentaAcumulada"
-                  name="Renta acumulada"
+                  name="Renta neta acumulada"
                   stroke={GOLD}
                   strokeWidth={2}
                   dot={{ fill: NAVY, stroke: GOLD, strokeWidth: 2 }}
@@ -507,8 +546,12 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
         </div>
       </section>
 
-      {/* SECTION 5: Rental Income Breakdown */}
+      {/* SECTION 5: Rental Income Breakdown — actualiza con ocupación y horizonte */}
       <section className="max-w-5xl mx-auto px-4 py-8">
+        <p className="text-sm text-white/50 mb-3">
+          Desglose anual y mensual según ocupación <strong className="text-white/70">{ocupacionPct}%</strong>.
+          Al cambiar ocupación u horizonte arriba, esta tabla y el gráfico se actualizan.
+        </p>
         <div
           className="rounded-xl overflow-hidden border border-[#C9A96E]/20"
           style={{ backgroundColor: BONE }}
@@ -529,53 +572,59 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
             </thead>
             <tbody className="text-sm">
               <tr className="border-b border-[#0D1B2A]/10">
-                <td className="py-3 px-4 text-[#0D1B2A]">Ingreso bruto (100% ocupación)</td>
+                <td className="py-3 px-4 text-[#0D1B2A]">Ingreso bruto estimado ({ocupacionPct}% ocupación)</td>
                 <td className="py-3 px-4 text-right text-[#0D1B2A]">
-                  ${formatUSD(b.ingresoBrutoAnual)}
+                  ${formatUSD(breakdownConOcupacion.ingresoBrutoAnual)}
                 </td>
                 <td className="py-3 px-4 text-right text-[#0D1B2A]">
-                  ${formatUSD(b.ingresoBrutoMensual)}
+                  ${formatUSD(breakdownConOcupacion.ingresoBrutoMensual)}
                 </td>
               </tr>
               <tr className="border-b border-[#0D1B2A]/10">
                 <td className="py-3 px-4 text-[#0D1B2A]">Tarifa de gestión (22%)</td>
                 <td className="py-3 px-4 text-right text-[#0D1B2A]">
-                  -${formatUSD(b.gestionAnual)}
+                  -${formatUSD(breakdownConOcupacion.gestionAnual)}
                 </td>
                 <td className="py-3 px-4 text-right text-[#0D1B2A]">
-                  -${formatUSD(b.gestionMensual)}
+                  -${formatUSD(breakdownConOcupacion.gestionMensual)}
                 </td>
               </tr>
               <tr className="border-b border-[#0D1B2A]/10">
                 <td className="py-3 px-4 text-[#0D1B2A]">Cuota comunitaria</td>
                 <td className="py-3 px-4 text-right text-[#0D1B2A]">
-                  -${formatUSD(b.cuotaComunitariaAnual)}
+                  -${formatUSD(breakdownConOcupacion.cuotaAnual)}
                 </td>
                 <td className="py-3 px-4 text-right text-[#0D1B2A]">
-                  -${formatUSD(b.cuotaComunitariaMensual)}
+                  -${formatUSD(breakdownConOcupacion.cuotaMensual)}
                 </td>
               </tr>
               <tr className="border-b border-[#0D1B2A]/10">
                 <td className="py-3 px-4 text-[#0D1B2A]">Reserva mantenimiento (1%)</td>
                 <td className="py-3 px-4 text-right text-[#0D1B2A]">
-                  -${formatUSD(b.reservaMantenimientoAnual)}
+                  -${formatUSD(breakdownConOcupacion.mantenimientoAnual)}
                 </td>
                 <td className="py-3 px-4 text-right text-[#0D1B2A]">
-                  -${formatUSD(b.reservaMantenimientoMensual)}
+                  -${formatUSD(breakdownConOcupacion.mantenimientoMensual)}
                 </td>
               </tr>
               <tr>
-                <td className="py-4 px-4 font-semibold text-[#0D1B2A]">Ingreso neto</td>
+                <td className="py-4 px-4 font-semibold text-[#0D1B2A]">Ingreso neto estimado</td>
                 <td className="py-4 px-4 text-right font-semibold" style={{ color: GOLD }}>
-                  ${formatUSD(b.ingresoNetoAnual)}
+                  ${formatUSD(breakdownConOcupacion.ingresoNetoAnual)}
                 </td>
                 <td className="py-4 px-4 text-right font-semibold" style={{ color: GOLD }}>
-                  ${formatUSD(b.ingresoNetoMensual)}
+                  ${formatUSD(breakdownConOcupacion.ingresoNetoMensual)}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
+        <p className="text-sm text-white/50 mt-3">
+          Proyección a <strong className="text-white/70">{horizonte} años</strong>: valor estimado{" "}
+          <strong style={{ color: GOLD }}>${formatUSD(proyeccionAlHorizonte.valor)}</strong>
+          {" "}· Renta neta acumulada{" "}
+          <strong style={{ color: GOLD }}>${formatUSD(proyeccionAlHorizonte.rentaNetaAcumulada)}</strong>.
+        </p>
       </section>
 
       {/* SECTION 6: CONFOTUR Benefit */}
