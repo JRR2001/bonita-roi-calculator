@@ -58,6 +58,8 @@ export interface ROIResult {
   /** CONFOTUR: ahorro total estimado (transfer + 15 años + ISR 10 años). */
   savingsCONFOTUR: number;
   expenseBreakdown: ROIExpenseBreakdown;
+  /** Valor del inmueble usado para el primer año de renta en la proyección (para que la tabla coincida con el gráfico). */
+  valorReferenciaPrimerAño: number;
   /** Solo si fase: años desde inicio obra hasta entrega (plusvalía sin renta). */
   constructionYears?: number;
   /** Solo si fase: etiqueta de fecha de entrega, p. ej. "Dic 2028". */
@@ -275,6 +277,9 @@ export function calculateROI(input: ROIInputs): ROIResult {
   const valorFinal = valorFuturo.length ? valorFuturo[valorFuturo.length - 1] : null;
   const totalReturnHorizonte = valorFinal?.totalReturn ?? 0;
   const breakEven = breakEvenAños <= años ? breakEvenAños : años;
+  // Mismo valor con el que se calcula la renta del primer año en el bucle (fin año 1) — para alinear tabla y gráfico
+  const valorReferenciaPrimerAño =
+    isOffPlan && valorFuturo[1] ? valorFuturo[1].valor : valorFuturo[0]?.valor ?? precioCompra;
 
   const savingsCONFOTURTransfer = precioCompra * CONFOTUR_TRANSFER_TAX_PCT;
   const savingsCONFOTURAnnual =
@@ -323,6 +328,7 @@ export function calculateROI(input: ROIInputs): ROIResult {
     savingsCONFOTURISR: Math.round(savingsCONFOTURISR * 100) / 100,
     savingsCONFOTUR: Math.round(savingsCONFOTUR * 100) / 100,
     expenseBreakdown,
+    valorReferenciaPrimerAño: Math.round(valorReferenciaPrimerAño * 100) / 100,
     ...(isOffPlan && {
       constructionYears,
       deliveryLabel,

@@ -100,17 +100,18 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
         : roi.valorFuturo[roi.valorFuturo.length - 1]?.valor ?? 0;
   const b = roi.expenseBreakdown;
 
-  // Desglose según ocupación seleccionada (actualiza al cambiar ocupación/horizonte)
+  // Desglose según ocupación — mismo valor de referencia que el primer año de la proyección (gráfico)
   const breakdownConOcupacion = useMemo(() => {
     const ocupacion = ocupacionPct / 100;
-    const ingresoBrutoAnual = roi.rentaBrutaAnual * ocupacion;
+    const valorRef = roi.valorReferenciaPrimerAño > 0 ? roi.valorReferenciaPrimerAño : roi.precioCompra;
+    const ingresoBrutoAnual = (valorRef * (roi.yieldBruto / 100)) * ocupacion;
     const ingresoBrutoMensual = ingresoBrutoAnual / 12;
     const gestionAnual = ingresoBrutoAnual * MANAGEMENT_PCT;
     const gestionMensual = gestionAnual / 12;
     const cuotaAnual = b.cuotaComunitariaAnual;
     const cuotaMensual = b.cuotaComunitariaMensual;
-    const mantenimientoAnual = b.reservaMantenimientoAnual;
-    const mantenimientoMensual = b.reservaMantenimientoMensual;
+    const mantenimientoAnual = valorRef * 0.01;
+    const mantenimientoMensual = mantenimientoAnual / 12;
     const ingresoNetoAnual = ingresoBrutoAnual - gestionAnual - cuotaAnual - mantenimientoAnual;
     const ingresoNetoMensual = ingresoNetoAnual / 12;
     return {
@@ -125,7 +126,7 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
       ingresoNetoAnual,
       ingresoNetoMensual,
     };
-  }, [roi.rentaBrutaAnual, b.cuotaComunitariaAnual, b.reservaMantenimientoAnual, ocupacionPct]);
+  }, [roi.valorReferenciaPrimerAño, roi.precioCompra, roi.yieldBruto, b.cuotaComunitariaAnual, ocupacionPct]);
 
   // Valores al horizonte seleccionado (para resumen bajo la tabla)
   const proyeccionAlHorizonte = useMemo(() => {
@@ -586,6 +587,7 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
           {roi.isOffPlan && (
             <span className="block mt-2 text-white/60">
               Los ingresos se refieren al periodo una vez entregada la unidad (Sunrise Dic 2028, Sunset Jul 2029).
+              El desglose usa el mismo valor del inmueble que el punto «Año 1» del gráfico.
             </span>
           )}
         </p>
