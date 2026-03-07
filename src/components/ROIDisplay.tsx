@@ -139,14 +139,15 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
       : { valor: roi.precioCompra, rentaNetaAcumulada: 0 };
   }, [roi.valorFuturo, horizonte, roi.precioCompra, roi.isOffPlan]);
 
-  // Punto inicial + proyección. Sobre plano: Inicio obra (Oct 26) → Entrega → Año 1..N. Sin fase: Hoy → Año 1..N.
+  // Punto inicial + proyección. Nombres cortos en eje X para evitar solapamientos.
   const chartData = useMemo(() => {
     if (roi.isOffPlan && roi.deliveryLabel) {
-      const hasta = horizonte + 1; // incluir entrega (year 0) + años 1..horizonte
+      const hasta = horizonte + 1;
       return [
-        { name: "Inicio obra (Oct 26)", year: -1, valor: roi.precioCompra, rentaAcumulada: 0 },
+        { name: "Inicio", nameTooltip: "Inicio obra (Oct 26)", year: -1, valor: roi.precioCompra, rentaAcumulada: 0 },
         ...roi.valorFuturo.slice(0, hasta).map((row: ValorFuturoYear) => ({
-          name: row.year === 0 ? `Entrega (${roi.deliveryLabel})` : `Año ${row.year}`,
+          name: row.year === 0 ? "Entrega" : `Año ${row.year}`,
+          nameTooltip: row.year === 0 ? `Entrega (${roi.deliveryLabel})` : `Año ${row.year}`,
           year: row.year,
           valor: row.valor,
           rentaAcumulada: row.rentaAcumulada,
@@ -154,15 +155,21 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
       ];
     }
     return [
-      { name: "Hoy", year: 0, valor: roi.precioCompra, rentaAcumulada: 0 },
+      { name: "Hoy", nameTooltip: "Hoy", year: 0, valor: roi.precioCompra, rentaAcumulada: 0 },
       ...roi.valorFuturo.slice(0, horizonte).map((row: ValorFuturoYear) => ({
         name: `Año ${row.year}`,
+        nameTooltip: `Año ${row.year}`,
         year: row.year,
         valor: row.valor,
         rentaAcumulada: row.rentaAcumulada,
       })),
     ];
   }, [roi.isOffPlan, roi.deliveryLabel, roi.precioCompra, roi.valorFuturo, horizonte]);
+
+  const precioCompraLabel =
+    roi.precioCompra >= 1_000_000
+      ? `Precio compra ($${(roi.precioCompra / 1_000_000).toFixed(1)}M)`
+      : `Precio compra ($${(roi.precioCompra / 1_000).toFixed(0)}k)`;
 
   return (
     <div className="min-h-screen bg-[#0D1B2A]" style={{ fontFamily: "var(--font-inter)" }}>
@@ -453,18 +460,25 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
           )}
         </p>
         <div className="rounded-xl overflow-hidden" style={{ backgroundColor: NAVY }}>
-          <div style={{ width: "100%", height: 380 }}>
+          <div style={{ width: "100%", height: 440 }}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={chartData}
-                margin={{ top: 12, right: 56, bottom: 12, left: 12 }}
+                margin={{ top: 28, right: 72, bottom: 40, left: 24 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                <CartesianGrid
+                  strokeDasharray="2 2"
+                  stroke="rgba(255,255,255,0.06)"
+                  vertical
+                />
                 <XAxis
                   dataKey="name"
-                  tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 12 }}
+                  tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
+                  interval={0}
+                  height={40}
+                  tickMargin={10}
                 />
                 <YAxis
                   yAxisId="valor"
@@ -472,9 +486,12 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
                   tickFormatter={(v) =>
                     v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : `$${(v / 1_000).toFixed(0)}k`
                   }
-                  tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 11 }}
+                  tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
+                  width={50}
+                  tickCount={5}
+                  tickMargin={8}
                 />
                 <YAxis
                   yAxisId="renta"
@@ -485,27 +502,32 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
                   tick={{ fill: GOLD, fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
+                  width={54}
+                  tickCount={5}
+                  tickMargin={8}
                 />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
                     const d = payload[0].payload;
+                    const label = (d as { nameTooltip?: string }).nameTooltip ?? d.name;
                     return (
                       <div
-                        className="rounded-lg border px-4 py-3 shadow-xl text-sm"
+                        className="rounded-lg border px-4 py-3 shadow-xl text-sm z-50"
                         style={{
                           backgroundColor: NAVY,
-                          borderColor: "rgba(201, 169, 110, 0.3)",
+                          borderColor: "rgba(201, 169, 110, 0.4)",
                         }}
                       >
-                        <p className="text-white/90">
-                          {d.name} · Valor propiedad:{" "}
+                        <p className="text-white/90 font-medium">{label}</p>
+                        <p className="text-white/85 mt-1.5">
+                          Valor:{" "}
                           <span style={{ color: "rgba(255,255,255,0.95)" }}>
                             ${(d.valor as number).toLocaleString("en-US")}
                           </span>
                         </p>
-                        <p className="text-white/80 mt-1">
-                          Renta neta acumulada:{" "}
+                        <p className="text-white/80 mt-0.5">
+                          Renta acumulada:{" "}
                           <span style={{ color: GOLD }}>
                             ${(d.rentaAcumulada as number).toLocaleString("en-US")}
                           </span>
@@ -519,24 +541,24 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
                   y={roi.precioCompra}
                   stroke={GOLD}
                   strokeDasharray="4 4"
-                  strokeOpacity={0.5}
+                  strokeOpacity={0.4}
                   label={{
-                    value: "Precio de compra",
-                    position: "right",
+                    value: precioCompraLabel,
+                    position: "left",
                     fill: GOLD,
-                    fontSize: 10,
+                    fontSize: 9,
                   }}
                 />
                 {roi.isOffPlan && chartData[1]?.name && (
                   <ReferenceLine
                     x={chartData[1].name}
-                    stroke="rgba(255,255,255,0.4)"
+                    stroke="rgba(255,255,255,0.3)"
                     strokeDasharray="3 3"
                     label={{
                       value: "Entrega",
                       position: "top",
-                      fill: "rgba(255,255,255,0.7)",
-                      fontSize: 10,
+                      fill: "rgba(255,255,255,0.8)",
+                      fontSize: 9,
                     }}
                   />
                 )}
@@ -545,9 +567,10 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
                   type="monotone"
                   dataKey="valor"
                   name="Valor de la propiedad"
-                  stroke="rgba(255,255,255,0.9)"
+                  stroke="rgba(255,255,255,0.92)"
                   strokeWidth={2.5}
-                  dot={{ fill: NAVY, stroke: "rgba(255,255,255,0.9)", strokeWidth: 2 }}
+                  dot={{ fill: NAVY, stroke: "rgba(255,255,255,0.92)", strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 5 }}
                   connectNulls
                 />
                 <Line
@@ -557,17 +580,18 @@ export function ROIDisplay({ unit, onBack }: ROIDisplayProps) {
                   name="Renta neta acumulada"
                   stroke={GOLD}
                   strokeWidth={2}
-                  dot={{ fill: NAVY, stroke: GOLD, strokeWidth: 2 }}
+                  dot={{ fill: NAVY, stroke: GOLD, strokeWidth: 2, r: 3.5 }}
+                  activeDot={{ r: 5 }}
                   connectNulls
                 />
                 <Legend
-                  wrapperStyle={{ paddingTop: 16 }}
+                  wrapperStyle={{ paddingTop: 28 }}
                   formatter={(value) => (
                     <span
                       className="italic text-sm"
                       style={{
                         fontFamily: "var(--font-cormorant)",
-                        color: "rgba(255,255,255,0.8)",
+                        color: "rgba(255,255,255,0.82)",
                       }}
                     >
                       {value}
